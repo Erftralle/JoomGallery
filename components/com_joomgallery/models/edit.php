@@ -159,7 +159,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
       // Unset the data of fields which we aren't allowed to change
       $form->setFieldAttribute('published', 'filter', 'unset');
     }
-    
+
     if(!$this->_config->get('jg_edit_metadata'))
     {
       $form->setFieldAttribute('metakey', 'disabled', 'true');
@@ -185,23 +185,8 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     // Import the appropriate plugin group
     JPluginHelper::importPlugin($group);
 
-    // Get the dispatcher
-    $dispatcher = JDispatcher::getInstance();
-
     // Trigger the form preparation event
-    $results = $dispatcher->trigger('onContentPrepareForm', array($form, $data));
-
-    // Check for errors encountered while preparing the form
-    if(count($results) && in_array(false, $results, true))
-    {
-      // Get the last error
-      $error = $dispatcher->getError();
-
-      if(!($error instanceof Exception))
-      {
-        throw new Exception($error);
-      }
-    }
+    $this->_mainframe->triggerEvent('onContentPrepareForm', array($form, $data));
   }
 
   /**
@@ -294,7 +279,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
 
     if(is_null($data))
     {
-      $data = JRequest::get('post', 2);
+      $data = $this->_mainframe->input->post->getArray(array(), NULL, 'RAW');
     }
 
     // Check for validation errors
@@ -551,7 +536,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     $query->delete(_JOOM_TABLE_COMMENTS)
           ->where('cmtpic = '.$this->_id);
     $this->_db->setQuery($query);
-    if(!$this->_db->query())
+    if(!$this->_db->execute())
     {
       JLog::add(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_DELETE_COMMENTS', $this->_id), JLog::WARNING, 'jerror');
     }
@@ -561,7 +546,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     $query->delete(_JOOM_TABLE_NAMESHIELDS)
           ->where('npicid = '.$this->_id);
     $this->_db->setQuery($query);
-    if(!$this->_db->query())
+    if(!$this->_db->execute())
     {
       JLog::add(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_DELETE_NAMETAGS', $this->_id), JLog::WARNING, 'jerror');
     }
@@ -571,7 +556,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     $query->delete(_JOOM_TABLE_VOTES)
           ->where('picid = '.$this->_id);
     $this->_db->setQuery($query);
-    if(!$this->_db->query())
+    if(!$this->_db->execute())
     {
       JLog::add(JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_DELETE_VOTES'), JLog::WARNING, 'jerror');
     }
@@ -642,7 +627,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     $thumb_dest     = $this->_ambit->get('thumb_path').$catpath_new.$item->imgthumbname;
     if(JFile::exists($thumb_dest))
     {
-      JError::raiseNotice(0, JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_DEST_THUMB_ALREADY_EXISTS'));
+      $this->_mainframe->enqueueMessage(JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_DEST_THUMB_ALREADY_EXISTS'), 'notice');
 
       if($thumb_count && JFile::exists($thumb_source))
       {
@@ -653,7 +638,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     {
       if(!JFile::exists($thumb_source))
       {
-        JError::raiseWarning(500, JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_SOURCE_THUMB_NOT_EXISTS', $thumb_source));
+        $this->_mainframe->enqueueMessage(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_SOURCE_THUMB_NOT_EXISTS', $thumb_source), 'error');
 
         return false;
       }
@@ -674,7 +659,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
         // If not succesful raise an error message and abort
         if(!$result)
         {
-          JError::raiseWarning(100, JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_MOVE_THUMB', JPath::clean($thumb_dest)));
+          $this->_mainframe->enqueueMessage(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_MOVE_THUMB', JPath::clean($thumb_dest)), 'error');
 
           return false;
         }
@@ -700,7 +685,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     $img_dest     = $this->_ambit->get('img_path').$catpath_new.$item->imgfilename;
     if(JFile::exists($img_dest))
     {
-      JError::raiseNotice(0, JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_DEST_IMG_ALREADY_EXISTS'));
+      $this->_mainframe->enqueueMessage(JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_DEST_IMG_ALREADY_EXISTS'), 'notice');
 
       if($img_count && JFile::exists($img_source))
       {
@@ -711,7 +696,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     {
       if(!JFile::exists($img_source))
       {
-        JError::raiseWarning(500, JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_SOURCE_IMG_NOT_EXISTS', $img_source));
+        $this->_mainframe->enqueueMessage(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_SOURCE_IMG_NOT_EXISTS', $img_source), 'error');
 
         return false;
       }
@@ -739,7 +724,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
             }
           }
 
-          JError::raiseWarning(100, JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_MOVE_IMG', JPath::clean($img_dest)));
+          $this->_mainframe->enqueueMessage(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_MOVE_IMG', JPath::clean($img_dest)), 'error');
 
           return false;
         }
@@ -754,7 +739,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     $orig_dest    = $this->_ambit->get('orig_path').$catpath_new.$item->imgfilename;
     if(JFile::exists($orig_dest))
     {
-      JError::raiseNotice(0, JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_DEST_ORIG_ALREADY_EXISTS'));
+      $this->_mainframe->enqueueMessage(JText::_('COM_JOOMGALLERY_EDITIMAGE_MSG_DEST_ORIG_ALREADY_EXISTS'), 'notice');
 
       if($img_count && JFile::exists($orig_source))
       {
@@ -798,7 +783,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
             }
           }
 
-          JError::raiseWarning(100, JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_MOVE_ORIG', JPath::clean($orig_dest)));
+          $this->_mainframe->enqueueMessage(JText::sprintf('COM_JOOMGALLERY_EDITIMAGE_MSG_COULD_NOT_MOVE_ORIG', JPath::clean($orig_dest)), 'error');
 
           return false;
         }
@@ -813,7 +798,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     // Make sure the record is valid
     if(!$item->check())
     {
-      JError::raiseWarning($item->getError());
+      $this->_mainframe->enqueueMessage($item->getError(), 'error');
 
       return false;
     }
@@ -821,7 +806,7 @@ class JoomGalleryModelEdit extends JoomGalleryModel
     // Store the entry to the database
     if(!$item->store())
     {
-      JError::raiseWarning($item->getError());
+      $this->_mainframe->enqueueMessage($item->getError(), 'error');
 
       return false;
     }
